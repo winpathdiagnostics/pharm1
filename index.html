@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline';">
+    <!-- SECURITY: Content Security Policy (CSP) -->
+    <!-- Updated img-src to allow fetching images from external brand URLs -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:;">
     
     <title>ApolloLite Pharmacy</title>
     
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Tailwind Config -->
     <script>
         tailwind.config = {
             theme: {
@@ -26,12 +30,13 @@
         }
     </script>
 
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* Hide scrollbar for cleaner mobile look */
         ::-webkit-scrollbar { width: 0px; background: transparent; }
         body { -webkit-tap-highlight-color: transparent; }
+        .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-900 pb-24 selection:bg-emerald-200">
@@ -40,18 +45,15 @@
 
     <header class="sticky top-0 bg-white shadow-sm z-40 border-b border-gray-100">
         <div class="flex items-center justify-between p-4 max-w-2xl mx-auto">
-            
             <div class="flex items-center">
                 <button id="header-back-btn" onclick="handleBack()" class="hidden p-2 -ml-2 mr-1 text-emerald-700 hover:bg-emerald-50 rounded-full transition-colors">
                     <i data-lucide="arrow-left" class="w-6 h-6"></i>
                 </button>
-                
                 <div id="header-logo" onclick="navigate('home')" class="cursor-pointer font-extrabold text-2xl text-emerald-700 tracking-tight flex items-center space-x-1 hover:opacity-80 transition-opacity">
                     <span class="text-emerald-500">+</span>
                     <span>ApolloLite</span>
                 </div>
             </div>
-
             <div class="flex items-center space-x-4">
                 <button id="header-cart-btn" onclick="navigate('cart')" class="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
                     <i data-lucide="shopping-cart" class="w-6 h-6"></i>
@@ -68,7 +70,7 @@
                     type="text"
                     id="search-input"
                     oninput="handleSearch(this.value)"
-                    placeholder="Search for medicines, vitamins..."
+                    placeholder="Search brand or generic name..."
                     class="w-full pl-10 pr-4 py-3 bg-gray-100 border-transparent rounded-xl focus:bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all text-sm font-medium"
                 />
             </div>
@@ -78,14 +80,14 @@
     <main class="max-w-2xl mx-auto w-full">
         <div id="view-home" class="p-4 block">
             <div class="flex justify-between items-end mb-4">
-                <h2 class="font-bold text-gray-800 text-lg">Top Products</h2>
+                <h2 class="font-bold text-gray-800 text-lg">Medicines & Healthcare</h2>
                 <span id="search-count" class="text-xs font-semibold text-gray-500">100 items found</span>
             </div>
             <div id="products-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
             <div id="empty-search" class="hidden text-center py-20 text-gray-500">
                 <i data-lucide="search" class="w-12 h-12 mx-auto text-gray-300 mb-4"></i>
                 <p class="font-semibold text-lg">No medicines found</p>
-                <p class="text-sm">Try searching for a different term.</p>
+                <p class="text-sm">Try searching for a different brand or generic term.</p>
             </div>
         </div>
 
@@ -95,7 +97,6 @@
 
         <div id="view-checkout" class="p-4 space-y-4 hidden">
             <form id="checkout-form" onsubmit="handleWhatsAppCheckout(event)">
-                
                 <div id="rx-warning-box" class="hidden bg-orange-50 border border-orange-200 rounded-xl p-3 flex space-x-3 items-start mb-4">
                     <i data-lucide="shield-alert" class="text-orange-500 mt-0.5 flex-shrink-0 w-5 h-5"></i>
                     <div>
@@ -106,29 +107,26 @@
 
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4">
                     <h2 class="font-bold text-gray-800 border-b pb-2">Patient Details</h2>
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Full Name <span class="text-red-500">*</span></label>
-                            <input type="text" id="cust-name" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none transition-all font-medium text-sm" placeholder="John Doe" />
+                            <input type="text" id="cust-name" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 outline-none text-sm" placeholder="John Doe" />
                         </div>
                         <div class="flex space-x-3">
                             <div class="w-24">
                                 <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Age <span class="text-red-500">*</span></label>
-                                <input type="number" id="cust-age" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none transition-all font-medium text-sm" placeholder="Yrs" />
+                                <input type="number" id="cust-age" required class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 outline-none text-sm" placeholder="Yrs" />
                             </div>
                             <div class="flex-1">
-                                <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Mobile No <span class="text-red-500">*</span></label>
-                                <input type="tel" id="cust-mobile" required pattern="[0-9]{10}" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none transition-all font-medium text-sm" placeholder="10-digit number" />
+                                <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Mobile <span class="text-red-500">*</span></label>
+                                <input type="tel" id="cust-mobile" required pattern="[0-9]{10}" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 outline-none text-sm" placeholder="10-digit no." />
                             </div>
                         </div>
                     </div>
-
                     <div>
                         <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Delivery Address <span class="text-red-500">*</span></label>
-                        <textarea id="cust-address" required rows="2" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none transition-all font-medium text-sm resize-none" placeholder="House/Flat No., Street, Area"></textarea>
+                        <textarea id="cust-address" required rows="2" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-200 outline-none text-sm resize-none" placeholder="House/Flat No., Street, Area"></textarea>
                     </div>
-
                     <div>
                         <button type="button" onclick="handleGPS()" id="gpsBtn" class="w-full py-2.5 px-4 rounded-xl border flex items-center justify-center space-x-2 font-bold text-sm transition-all bg-white border-gray-200 text-gray-700 hover:bg-gray-50">
                             <i data-lucide="map-pin" class="text-gray-400 w-[18px] h-[18px]" id="gps-icon"></i>
@@ -141,8 +139,7 @@
                     <label class="block text-xs font-bold text-gray-600 uppercase tracking-wider">
                         Prescription Image <span id="rx-asterisk" class="text-red-500 hidden">*</span>
                     </label>
-                    
-                    <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors border-gray-300 group">
+                    <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 border-gray-300 group">
                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
                             <i data-lucide="upload" class="w-8 h-8 mb-2 text-gray-400 group-hover:text-emerald-500 transition-colors"></i>
                             <p id="file-name-label" class="text-sm font-semibold text-gray-700">Click to Upload Image</p>
@@ -150,12 +147,10 @@
                         </div>
                         <input type="file" id="rx-file-input" class="hidden" accept="image/*,.pdf" onchange="handleFileSelect(event)" />
                     </label>
-                    
                     <div id="rx-success-box" class="hidden bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-2 rounded-lg items-center">
                         <i data-lucide="check-circle-2" class="w-[14px] h-[14px] mr-2 flex-shrink-0"></i>
                         <span id="rx-success-text" class="truncate"></span>
                     </div>
-                    
                     <p id="rx-whatsapp-note" class="hidden text-[10px] font-bold text-gray-500 text-center leading-relaxed bg-gray-100 p-2 rounded-lg">
                         Important: You will also be prompted to manually attach this image directly in the WhatsApp chat.
                     </p>
