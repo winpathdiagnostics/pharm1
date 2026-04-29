@@ -1,7 +1,6 @@
 import { DRUGS } from './data.js';
 import { generateWhatsAppLink } from './whatsapp.js';
 
-// Application State
 let currentView = 'home';
 let cart = [];
 let searchQuery = '';
@@ -9,7 +8,6 @@ let gpsData = { lat: null, lng: null };
 let prescriptionFile = null;
 let requiresRx = false;
 
-// Attach functions to window so inline HTML onclick handlers can find them
 window.navigate = function(view) {
     currentView = view;
     document.getElementById('view-home').classList.toggle('hidden', view !== 'home');
@@ -88,7 +86,6 @@ window.handleFileSelect = function(event) {
     }
 };
 
-// High-accuracy GPS handling with browser Permission Denied catching
 window.handleGPS = function() {
     if (navigator.geolocation) {
         showToast("Fetching location...");
@@ -139,12 +136,17 @@ window.handleWhatsAppCheckout = function(e) {
     window.open(link, '_blank');
 };
 
-// --- Rendering Functions ---
 function renderProducts() {
     const grid = document.getElementById('products-grid');
     const empty = document.getElementById('empty-search');
     
-    const filtered = DRUGS.filter(d => d.name.toLowerCase().includes(searchQuery) || d.type.toLowerCase().includes(searchQuery));
+    // Filters by name, generic, or type
+    const filtered = DRUGS.filter(d => 
+        d.name.toLowerCase().includes(searchQuery) || 
+        d.generic.toLowerCase().includes(searchQuery) ||
+        d.type.toLowerCase().includes(searchQuery)
+    );
+    
     document.getElementById('search-count').innerText = `${filtered.length} items found`;
 
     if (filtered.length === 0) {
@@ -157,6 +159,7 @@ function renderProducts() {
 
     grid.innerHTML = filtered.map(drug => {
         const cartItem = cart.find(item => item.id === drug.id);
+        
         let actionHtml = cartItem 
             ? `<div class="flex items-center justify-between bg-emerald-50 rounded-xl p-1 shadow-inner">
                 <button onclick="updateQty(${drug.id}, -1)" class="p-1.5 bg-white rounded-lg shadow-sm text-emerald-700 active:scale-95"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
@@ -167,15 +170,18 @@ function renderProducts() {
 
         let rxBadge = drug.rx ? `<div class="absolute top-2 left-2 bg-red-50 text-red-600 text-[10px] font-extrabold px-1.5 py-0.5 rounded flex items-center border border-red-100 z-10"><i data-lucide="alert-circle" class="w-2.5 h-2.5 mr-0.5"></i><span>Rx</span></div>` : '';
 
+        // Fallback image logic is built directly into the HTML <img> tag via onerror
         return `
             <div class="flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm relative">
                 ${rxBadge}
-                <div class="h-32 bg-gray-50 flex items-center justify-center text-gray-300">
-                    <div class="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center"><span class="text-emerald-500 font-bold text-sm">Rx</span></div>
+                <div class="h-32 bg-white flex items-center justify-center p-2">
+                    <img src="${drug.imageUrl}" alt="${drug.name}" class="w-full h-full object-contain mix-blend-multiply" onerror="this.onerror=null;this.src='https://placehold.co/300x300/f8fafc/94a3b8?text=Medicine';" />
                 </div>
-                <div class="p-3 flex flex-col flex-grow border-t border-gray-50">
-                    <h3 class="font-bold text-gray-800 text-sm leading-tight line-clamp-2 min-h-[40px]">${drug.name}</h3>
-                    <p class="text-[11px] text-gray-500 mt-0.5 font-medium">${drug.type}</p>
+                <div class="p-3 flex flex-col flex-grow border-t border-gray-50 bg-gray-50/30">
+                    <h3 class="font-bold text-gray-800 text-sm leading-tight line-clamp-1">${drug.name}</h3>
+                    <p class="text-[10px] text-gray-500 mt-0.5 leading-tight line-clamp-1" title="${drug.generic}">${drug.generic}</p>
+                    <div class="text-[9px] font-bold bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded w-max mt-1.5">${drug.packSize}</div>
+                    
                     <div class="mt-auto pt-3">
                         <div class="flex items-end space-x-1.5 mb-2">
                             <span class="text-base font-extrabold text-gray-900">₹${drug.price.toFixed(2)}</span>
@@ -204,7 +210,7 @@ function updateCartUI() {
     const floating = document.getElementById('floating-cart');
     if (cart.length > 0 && currentView === 'home') {
         const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-        document.getElementById('floating-cart-items').innerText = `${cart.length} Item${cart.length > 1 ? 's' : ''} in cart`;
+        document.getElementById('floating-cart-items').innerText = `${cart.length} Pack${cart.length > 1 ? 's' : ''} in cart`;
         document.getElementById('floating-cart-total').innerText = `₹${total.toFixed(2)}`;
         floating.classList.remove('hidden');
     } else {
@@ -234,15 +240,20 @@ function renderCartView() {
         cartHtml += `
             <div class="p-4 flex items-center relative">
                 ${item.rx ? `<i data-lucide="alert-circle" class="w-3.5 h-3.5 text-red-500 absolute top-4 left-4"></i>` : ''}
-                <div class="flex-1 ${item.rx ? 'pl-6' : ''}">
-                    <h3 class="font-bold text-gray-800 text-sm">${item.name}</h3>
-                    <div class="text-gray-500 text-xs mt-0.5">${item.type}</div>
-                    <div class="mt-2 flex items-center space-x-2">
+                
+                <div class="w-12 h-12 bg-gray-50 rounded-lg p-1 mr-3 flex-shrink-0">
+                    <img src="${item.imageUrl}" alt="${item.name}" class="w-full h-full object-contain mix-blend-multiply" onerror="this.onerror=null;this.src='https://placehold.co/150x150/f8fafc/94a3b8?text=Med';" />
+                </div>
+
+                <div class="flex-1">
+                    <h3 class="font-bold text-gray-800 text-sm leading-tight">${item.name}</h3>
+                    <div class="text-gray-500 text-[10px] mt-0.5">${item.packSize}</div>
+                    <div class="mt-1.5 flex items-center space-x-2">
                         <span class="font-extrabold text-emerald-700">₹${item.price.toFixed(2)}</span>
                         <span class="text-xs text-gray-400 line-through">₹${item.mrp.toFixed(2)}</span>
                     </div>
                 </div>
-                <div class="flex flex-col items-end justify-between ml-4 space-y-3">
+                <div class="flex flex-col items-end justify-between ml-2 space-y-3">
                     <button onclick="removeFromCart(${item.id})" class="text-gray-400 hover:text-red-500 transition-colors bg-gray-50 p-1.5 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     <div class="flex items-center space-x-2 bg-gray-50 border border-gray-100 rounded-lg p-1">
                         <button onclick="updateQty(${item.id}, -1)" class="p-1 bg-white rounded shadow-sm text-gray-700 active:scale-95"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button>
