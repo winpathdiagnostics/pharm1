@@ -1,6 +1,7 @@
 import { DRUGS } from './data.js';
 import { generateWhatsAppLink } from './whatsapp.js';
 
+// --- APPLICATION STATE ---
 let currentView = 'home';
 let cart = [];
 let searchQuery = '';
@@ -8,6 +9,15 @@ let gpsData = { lat: null, lng: null };
 let prescriptionFile = null;
 let requiresRx = false;
 
+// --- PROMO CODE CONFIGURATION ---
+const VALID_PROMO_CODES = {
+    'FLAT10': 10,   // 10% Discount
+    'HEALTH20': 20, // 20% Discount
+    'APOLLO50': 50  // 50% Discount
+};
+let appliedPromo = null;
+
+// --- VIEW ROUTING ---
 window.navigate = function(view) {
     currentView = view;
     document.getElementById('view-home').classList.toggle('hidden', view !== 'home');
@@ -37,7 +47,7 @@ window.navigate = function(view) {
 
     updateCartUI();
     lucide.createIcons();
-    window.scrollTo(0, 0);
+    window.scrollTo(0, 0); 
 };
 
 window.handleBack = function() {
@@ -45,6 +55,7 @@ window.handleBack = function() {
     else if (currentView === 'cart') navigate('home');
 };
 
+// --- CORE LOGIC ---
 window.handleSearch = function(query) {
     searchQuery = query.toLowerCase();
     renderProducts();
@@ -76,6 +87,40 @@ window.removeFromCart = function(id) {
     if(cart.length === 0) navigate('home');
 };
 
+// --- PROMO CODE LOGIC ---
+window.applyPromo = function() {
+    const input = document.getElementById('promo-input');
+    if (!input) return;
+    
+    const code = input.value.trim().toUpperCase();
+    if (code === '') {
+        showToast("Please enter a promo code.");
+        return;
+    }
+
+    if (VALID_PROMO_CODES[code]) {
+        appliedPromo = { code: code, discount: VALID_PROMO_CODES[code] };
+        showToast(`Promo code ${code} applied! You get ${VALID_PROMO_CODES[code]}% OFF.`);
+        renderCartView(); 
+        updateCartUI();   
+    } else {
+        const err = document.getElementById('promo-error');
+        if (err) {
+            err.innerText = "Invalid or Expired Promo Code";
+            err.classList.remove('hidden');
+        }
+        showToast("Invalid Promo Code.");
+    }
+};
+
+window.removePromo = function() {
+    appliedPromo = null;
+    showToast("Promo code removed.");
+    renderCartView(); 
+    updateCartUI();
+};
+
+// --- CHECKOUT & HARDWARE INTEGRATIONS ---
 window.handleFileSelect = function(event) {
     prescriptionFile = event.target.files[0];
     if (prescriptionFile) {
@@ -132,15 +177,15 @@ window.handleWhatsAppCheckout = function(e) {
         return showToast("Prescription is mandatory.");
     }
 
-    const link = generateWhatsAppLink(cart, formData, requiresRx);
+    const link = generateWhatsAppLink(cart, formData, requiresRx, appliedPromo);
     window.open(link, '_blank');
 };
 
+// --- RENDERING FUNCTIONS ---
 function renderProducts() {
     const grid = document.getElementById('products-grid');
     const empty = document.getElementById('empty-search');
     
-    // Filters by name, generic, or type
     const filtered = DRUGS.filter(d => 
         d.name.toLowerCase().includes(searchQuery) || 
         d.generic.toLowerCase().includes(searchQuery) ||
@@ -170,9 +215,9 @@ function renderProducts() {
 
         let rxBadge = drug.rx ? `<div class="absolute top-2 left-2 bg-red-50 text-red-600 text-[10px] font-extrabold px-1.5 py-0.5 rounded flex items-center border border-red-100 z-10"><i data-lucide="alert-circle" class="w-2.5 h-2.5 mr-0.5"></i><span>Rx</span></div>` : '';
 
-        // Fallback image logic is built directly into the HTML <img> tag via onerror
+        // Restored Product Discount Badge & Slashed MRP
         return `
-            <div class="flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm relative">
+            <div class="flex flex-col bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm relative hover:shadow-md transition-shadow">
                 ${rxBadge}
                 <div class="h-32 bg-white flex items-center justify-center p-2">
                     <img src="${drug.imageUrl}" alt="${drug.name}" class="w-full h-full object-contain mix-blend-multiply" onerror="this.onerror=null;this.src='https://placehold.co/300x300/f8fafc/94a3b8?text=Medicine';" />
@@ -209,9 +254,12 @@ function updateCartUI() {
 
     const floating = document.getElementById('floating-cart');
     if (cart.length > 0 && currentView === 'home') {
-        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const subtotalSelling = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const promoDiscountAmt = appliedPromo ? (subtotalSelling * appliedPromo.discount / 100) : 0;
+        const finalTotal = subtotalSelling - promoDiscountAmt;
+        
         document.getElementById('floating-cart-items').innerText = `${cart.length} Pack${cart.length > 1 ? 's' : ''} in cart`;
-        document.getElementById('floating-cart-total').innerText = `₹${total.toFixed(2)}`;
+        document.getElementById('floating-cart-total').innerText = `₹${finalTotal.toFixed(2)}`;
         floating.classList.remove('hidden');
     } else {
         floating.classList.add('hidden');
@@ -222,6 +270,7 @@ function renderCartView() {
     const container = document.getElementById('cart-content');
     
     if (cart.length === 0) {
+        appliedPromo = null; 
         container.innerHTML = `
             <div class="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
                 <i data-lucide="shopping-cart" class="w-12 h-12 mx-auto text-gray-300 mb-4"></i>
@@ -266,24 +315,60 @@ function renderCartView() {
     });
     cartHtml += `</div>`;
 
-    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const savings = cart.reduce((sum, item) => sum + ((item.mrp - item.price) * item.qty), 0);
+    // Advanced Calculations restoring MRP and Total Savings
+    const subtotalMRP = cart.reduce((sum, item) => sum + (item.mrp * item.qty), 0);
+    const subtotalSelling = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const productSavings = subtotalMRP - subtotalSelling;
+    const promoDiscountAmt = appliedPromo ? (subtotalSelling * appliedPromo.discount / 100) : 0;
+    const finalTotal = subtotalSelling - promoDiscountAmt;
+    const totalSavings = productSavings + promoDiscountAmt;
 
+    // Inject Promo Code UI
+    cartHtml += `
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mt-4">
+            <h3 class="font-bold text-gray-800 mb-3 text-sm">Apply Promo Code</h3>
+            ${appliedPromo ? `
+                <div class="flex justify-between items-center bg-emerald-50 border border-emerald-200 p-3 rounded-xl transition-all">
+                    <div>
+                        <span class="font-extrabold text-emerald-800">${appliedPromo.code}</span>
+                        <p class="text-xs text-emerald-600 font-semibold">${appliedPromo.discount}% OFF applied to your order</p>
+                    </div>
+                    <button type="button" onclick="removePromo()" class="text-red-500 font-bold text-xs px-4 py-2 bg-white rounded-lg shadow-sm border border-red-100 active:scale-95 transition-all hover:bg-red-50">Remove</button>
+                </div>
+            ` : `
+                <div class="flex space-x-2">
+                    <input type="text" id="promo-input" placeholder="e.g. HEALTH20" class="flex-1 uppercase p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold placeholder:normal-case placeholder:font-medium placeholder:text-gray-400" />
+                    <button type="button" onclick="applyPromo()" class="bg-gray-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-gray-900 active:scale-95 transition-all shadow-md">Apply</button>
+                </div>
+                <p id="promo-error" class="hidden text-xs text-red-500 mt-2 font-semibold"></p>
+            `}
+        </div>
+    `;
+
+    // Inject Bill Summary with Restored Discount Data
     cartHtml += `
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 relative overflow-hidden mt-4">
             <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-10"></div>
             <h3 class="font-bold text-gray-800 mb-3 text-sm">Bill Summary</h3>
             <div class="space-y-2 text-sm text-gray-600 mb-3 pb-3 border-b border-dashed border-gray-200">
-                <div class="flex justify-between"><span>Item Total (MRP)</span><span>₹${(total + savings).toFixed(2)}</span></div>
-                <div class="flex justify-between text-emerald-600 font-medium"><span>Total Discount</span><span>- ₹${savings.toFixed(2)}</span></div>
+                <div class="flex justify-between"><span>Item Total (MRP)</span><span>₹${subtotalMRP.toFixed(2)}</span></div>
+                <div class="flex justify-between text-emerald-600 font-medium"><span>Product Discount</span><span>- ₹${productSavings.toFixed(2)}</span></div>
+                
+                ${appliedPromo ? `
+                    <div class="flex justify-between text-emerald-600 font-medium">
+                        <span>Promo Code (${appliedPromo.code})</span>
+                        <span>- ₹${promoDiscountAmt.toFixed(2)}</span>
+                    </div>
+                ` : ''}
+
                 <div class="flex justify-between"><span>Delivery Fee</span><span class="text-emerald-600 font-medium">FREE</span></div>
             </div>
             <div class="flex justify-between font-extrabold text-lg text-gray-900">
                 <span>To Pay</span>
-                <span>₹${total.toFixed(2)}</span>
+                <span>₹${finalTotal.toFixed(2)}</span>
             </div>
             <div class="mt-2 text-xs font-semibold text-emerald-700 bg-emerald-50 inline-block px-2 py-1 rounded">
-                Total Savings: ₹${savings.toFixed(2)}
+                Total Savings: ₹${totalSavings.toFixed(2)}
             </div>
         </div>
         
@@ -334,7 +419,7 @@ function showToast(message, duration = 3000) {
     }, duration);
 }
 
-// Initialize
+// System Init
 window.onload = () => {
     renderProducts();
     updateCartUI();
