@@ -13,7 +13,7 @@ let requiresRx = false;
 const VALID_PROMO_CODES = {
     'FLAT10': 10,   // 10% Discount
     'HEALTH20': 20, // 20% Discount
-    'APOLLO50': 50  // 50% Discount
+    'PHARM50': 50  // 50% Discount
 };
 let appliedPromo = null;
 
