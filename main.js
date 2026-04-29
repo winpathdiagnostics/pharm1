@@ -88,6 +88,7 @@ window.handleFileSelect = function(event) {
     }
 };
 
+// High-accuracy GPS handling with browser Permission Denied catching
 window.handleGPS = function() {
     if (navigator.geolocation) {
         showToast("Fetching location...");
@@ -100,8 +101,19 @@ window.handleGPS = function() {
                 document.getElementById('gps-text').innerText = "Location Captured ✓";
                 showToast("GPS Location attached!");
             },
-            () => showToast("Failed to get location. Check permissions.")
+            (error) => {
+                if (error.code === error.PERMISSION_DENIED) {
+                    showToast("Location denied. Please tap the lock icon (🔒) in your address bar to allow GPS.", 5000);
+                } else if (error.code === error.TIMEOUT) {
+                    showToast("Location request timed out. Please try again.");
+                } else {
+                    showToast("Failed to get location. Ensure your device GPS is turned on.");
+                }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
+    } else {
+        showToast("Geolocation is not supported by your browser");
     }
 };
 
