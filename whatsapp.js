@@ -14,7 +14,8 @@ export function generateWhatsAppLink(cart, formData, requiresRx) {
     
     msg += `\n*Medicines Requested:*\n`;
     cart.forEach((item, i) => {
-        msg += `${i + 1}. ${item.name} (x${item.qty}) - ₹${(item.price * item.qty).toFixed(2)}\n`;
+        // Appends the specific Pack Size into the receipt
+        msg += `${i + 1}. ${item.name} [${item.packSize}] (x${item.qty}) - ₹${(item.price * item.qty).toFixed(2)}\n`;
     });
     
     const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
