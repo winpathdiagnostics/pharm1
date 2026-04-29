@@ -1,5 +1,7 @@
-// Database of 100 Medicines with Generic Names and Pack Sizes
-// To use actual brand images, replace the "imageUrl" value with a direct image link (e.g. from Netmeds/1mg CDN).
+/**
+ * DATABASE: 100 Commonly Prescribed & OTC Medicines
+ * Note: MRP and Product Discounts restored.
+ */
 const rawDrugsList = [
     // Pain Relief & Fever (1-10)
     { name: "Dolo 650 Tablet", generic: "Paracetamol 650mg", type: "Pain/Fever", packSize: "15 Tablets/Strip", mrp: 30.90, disc: 15, rx: false, imageUrl: "https://placehold.co/300x300/f8fafc/10b981?text=Dolo+650" },
